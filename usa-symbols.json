@@ -1,0 +1,53 @@
+{
+
+"crc32": "CAAF5C6B",
+
+"sections": {
+
+"--title--": {
+    "start": "3DDC",
+    "end": "3FC5"
+},
+
+"--window--": {
+    "table-start": "6F7C",
+    "table-end": "6FC0",
+    "start": "6FC0",
+    "end": "752D",
+    "duplicate": 6
+},
+
+"--names--": {
+    "table-start": "6842",
+    "table-end": "6852",
+    "start": "7AC7",
+    "end": "7FE8",
+    "d_table_idx": [
+        5
+    ],
+    "order": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        7,
+        5,
+        0
+    ]
+},
+
+"--text--": {
+    "table-start": "8012",
+    "table-end": "8038",
+    "start": "8038",
+    "end": "BCC0"
+},
+
+"--credits--": {
+    "start": "549D",
+    "end": "595F"
+}
+
+}
+}
