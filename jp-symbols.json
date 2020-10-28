@@ -1,0 +1,33 @@
+{
+
+"crc32": "C72E2739",
+
+"sections": {
+
+"--windows--": {
+    "start": "02E3",
+    "end": "0868"
+},
+
+"--items--": {
+    "start": "0868",
+    "end": "0B4B"
+},
+
+"--text--": {
+    "start": "A011",
+    "end": "BF10"
+},
+
+"--enemies--": {
+    "start": "F250",
+    "end": "F4D0"
+},
+
+"--items--": {
+    "start": "G",
+    "end": "F4D0"
+}
+
+}
+}

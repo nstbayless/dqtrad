@@ -2,9 +2,14 @@ import sys
 import json
 import binascii # for crc32
 import re
+import io
 
 def hb(a):
-    str = hex(a)[2:]
+    str = hex(a)
+    if str.startswith("0x"):
+        str = str[2:]
+    if str.startswith("-0x"):
+        str = "-" + str[3:]
     if (len(str) < 2):
          str = "0" + str
     return str
@@ -22,14 +27,36 @@ class Table:
                 v = c[1].strip()
                 if v == "":
                     v = " "
-                self.table[k] = v
+                if k < 0x100:
+                    if v not in self.table: # avoid duplicates
+                        self.table[k] = v
+                else:
+                    if k >= 0x10000:
+                        raise Exception("3-byte keys and beyond not supported in table file.")
+                    basekey = (k & 0xff00) >> 8
+                    nkey = k & 0xff
+                    if type(self.table[basekey]) != type(dict()):
+                        self.table[basekey] = dict()
+                    self.table[basekey][nkey] = v
+                    
+
     
     def to_string(self, arr):
         s = ""
-        for byte in arr:
+        for i in range(len(arr)):
+            byte = arr[i]
             t = self.table[int(byte)]
             if t is None:
                 s += "\\" + HB(byte)
+            elif type(t) == type(dict()) and i < len(arr) - 1:
+                # double feature
+                i += 1
+                lb = arr[i]
+                if lb in t:
+                    s += t[lb]
+                else:
+                    s += "\\" + HB(byte) + "\\" + HB(lb)
+                continue
             else:
                 s += t
             
@@ -38,11 +65,37 @@ class Table:
                 s += "\n"
             if byte in [0xfc]:
                 s += "\n"
+        # trim 0xff off end
+        while s.endswith("\\FF\n\FF\n"):
+            s = s[:-4]
         return s
+
+    def get_k(self):
+        return max(list(map(lambda x: len(x) if x is not None else 0, self.table)))
     
+    def get_reverse_map(self):
+        s = dict()
+        i = -1
+        for v in self.table:
+            i += 1
+            if type(v) == type(dict()):
+                for key in v:
+                    s[v[key]] = (i, key)
+            elif v is not None:
+                s[v] = i
+        return s
+
+    def decode_single(self, b):
+        v = self.table[b]
+        if v is None or type(v) == type(dict()) or len(v) != 1:
+            return None
+        else:
+            return v[0]
+
     # recursive text-matching function.
     def to_bytes(self, s):
         a = []
+        rmap = self.get_reverse_map()
         
         while len(s) > 0:
             match = False
@@ -51,12 +104,19 @@ class Table:
                 s = s[1:]
                 continue
             
-            # match up to the next 4 characters.
-            for i in reversed(range(1, 5)):
+            # match up to the next n characters.
+            for i in reversed(range(1, self.get_k() + 1)):
                 if len(s) >= i:
-                    if s[:i] in self.table:
+                    if s[:i] in rmap:
                         match = True
-                        a += [self.table.index(s[:i])]
+                        key = rmap[s[:i]]
+                        basekey = key if type(key) != type((0,0)) else key[0]
+                        a += [basekey]
+                        if basekey != key:
+                            # extended character
+                            a += [key[1]]
+                        
+                        # remainder of string.
                         s = s[i:]
                         break
             
@@ -74,13 +134,14 @@ class Table:
         return a
 
 def usage():
-    print("dqtrad v0.1")
+    print("dqtrad v0.9")
     print()
     print("Usage:")
-    print("  python3 dqtrad.py base.nes symbols.json table.tbl [-i hack.txt] [-o hack.txt] [-e modified.nes]")
+    print("  python3 dqtrad.py base.nes symbols.json table.tbl [-i hack.txt] [-o hack.txt] [-d dump.txt] [-e modified.nes]")
     print("")
     print("-i: open hack")
     print("-o: save hack")
+    print("-d: save hex dump")
     print("-e: export to rom")
 
 if "--help" in sys.argv or "-h" in sys.argv:
@@ -91,6 +152,7 @@ basefile=None
 symfile=None
 outfile=None
 infile=None
+outdumpfile=None
 tablefile=None
 exportnes=None
 
@@ -106,7 +168,10 @@ if "-i" in sys.argv[2:-1]:
 
 if "-o" in sys.argv[2:-1]:
     outfile = sys.argv[sys.argv.index("-o") + 1]
-    
+
+if "-d" in sys.argv[2:-1]:
+    outdumpfile = sys.argv[sys.argv.index("-d") + 1]
+
 if "-e" in sys.argv[2:-1]:
     exportnes = sys.argv[sys.argv.index("-e") + 1]
     if not exportnes.endswith(".nes"):
@@ -131,8 +196,26 @@ with open(basefile, "rb") as f:
     bin = bytearray(f.read())
 
 # table
-with open(tablefile) as f:
+with io.open(tablefile, mode="r", encoding="utf-8") as f:
     table = Table(f)
+
+if outdumpfile is not None:
+    with io.open(outdumpfile, mode="w", encoding="utf-8") as f:
+        for row in range(len(bin) // 0x10):
+            addr = row * 0x10
+            line = HB((addr >> 16) & 0xff) + HB((addr >> 8) & 0xff) + HB(addr & 0xff)
+            line += ": "
+            for i in range(0x10):
+                line += HB(bin[addr + i]) + " "
+            line += "| "
+            for i in range(0x10):
+                dec = table.decode_single(bin[addr + i])
+                if dec is None:
+                    line += " "
+                else:
+                    line += dec
+            f.write(line + "\n")
+    sys.exit()
 
 # symbols
 with open(symfile) as f:
@@ -173,7 +256,10 @@ for section in sections:
         bank = int((rom_t_start - 0x10) / 0x4000)
         addresses = [rom_end]
         for i in range(rom_t_start, rom_t_end, 2):
-            addresses.append(read_word(i) + 0x10 + 0x4000 * bank - 0x8000)
+            addr = read_word(i) + 0x10 + 0x4000 * bank - 0x8000
+            if read_word(i) < 0x8000 or read_word(i) > 0xffff:
+                raise Exception("table seems corrupted (" + section + "); contains invalid address " + HB(read_word(i)))
+            addresses.append(addr)
         addresses = sorted(set(addresses))
         
         data_sections[section] = []
