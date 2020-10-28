@@ -134,7 +134,7 @@ class Table:
         return a
 
 def usage():
-    print("dqtrad v0.9")
+    print("dqtrad v1.0")
     print()
     print("Usage:")
     print("  python3 dqtrad.py base.nes symbols.json table.tbl [-i hack.txt] [-o hack.txt] [-d dump.txt] [-e modified.nes]")
