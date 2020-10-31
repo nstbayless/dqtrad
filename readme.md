@@ -24,7 +24,7 @@ Of course, a ROM is also required.
 To extract text from a ROM to a text file, use the `-o` flag:
 
 ```
-python3 dragon_warrior.nes usa-symbols.json usa-en.tbl -o hack.txt
+python3 dqtrad.py dragon_warrior.nes usa-symbols.json usa-en.tbl -o hack.txt
 ```
 
 You may then edit the file that is produced (`hack.txt`) and proceed to the following step.
@@ -37,7 +37,7 @@ for expanded item, monster, and spell names.
 To extract text from a ROM to a text file, use the `-i` flag to load the hack, and `-e` to export to a ROM:
 
 ```
-python3 dragon_warrior.nes usa-symbols.json usa-en.tbl -i hack.txt -e out.nes
+python3 dqtrad.py dragon_warrior.nes usa-symbols.json usa-en.tbl -i hack.txt -e out.nes
 ```
 
 Please note that an error may be encountered if space is exceeded.
@@ -47,7 +47,7 @@ Please note that an error may be encountered if space is exceeded.
 To dump the hex contents and decoded text of the ROM for viewing directly, use the `-d` flag:
 
 ```
-python3 dragon_warrior.nes usa-symbols.json usa-en.tbl -d dump.txt
+python3 dqtrad.py dragon_warrior.nes usa-symbols.json usa-en.tbl -d dump.txt
 ```
 
 This is likely not useful unless you are trying to create or edit a symbols file.
